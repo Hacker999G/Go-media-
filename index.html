@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Go Media | Connect & Sell</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://ad.gigapub.tech/script?id=1096"></script>
+
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+        .fb-blue { color: #1877f2; }
+        .bg-fb-blue { background-color: #1877f2; }
+        .story-ring { border: 3px solid #1877f2; padding: 2px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+
+    <header class="bg-white sticky top-0 z-50 border-b shadow-sm">
+        <div class="flex justify-between items-center px-4 py-2">
+            <h1 class="text-3xl font-extrabold fb-blue tracking-tighter">Go Media</h1>
+            <div class="flex gap-2 text-lg">
+                <a href="https://t.me/JUST_GOPAL" class="bg-gray-100 p-2 rounded-full w-9 h-9 flex items-center justify-center">
+                    <i class="fa fa-headset text-blue-600"></i>
+                </a>
+                <div onclick="alert('Messenger loading...')" class="bg-gray-100 p-2 rounded-full w-9 h-9 flex items-center justify-center">
+                    <i class="fa-brands fa-facebook-messenger"></i>
+                </div>
+            </div>
+        </div>
+        <div class="flex justify-around text-gray-500 border-t">
+            <div class="py-3 flex-1 flex justify-center border-b-4 border-blue-600"><i class="fa fa-home text-blue-600 text-xl"></i></div>
+            <div class="py-3 flex-1 flex justify-center"><i class="fa fa-store text-xl"></i></div>
+            <div class="py-3 flex-1 flex justify-center text-xl"><i class="fa fa-user-group text-xl"></i></div>
+            <div class="py-3 flex-1 flex justify-center"><i class="fa fa-bell text-xl"></i></div>
+        </div>
+    </header>
+
+    <div class="bg-white p-3 flex gap-4 overflow-x-auto no-scrollbar border-b">
+        <div onclick="addStory()" class="flex-shrink-0 flex flex-col items-center">
+            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-blue-500 relative">
+                <i class="fa fa-plus text-blue-500"></i>
+            </div>
+            <span class="text-[10px] mt-1 font-bold">Add Story</span>
+        </div>
+        <div id="storyList" class="flex gap-4"></div>
+    </div>
+
+    <div class="bg-white p-3 flex gap-3 items-center shadow-sm mt-2">
+        <img id="user-avatar-main" src="https://via.placeholder.com/40" class="rounded-full w-10 h-10 border">
+        <button onclick="openPostModal()" class="flex-1 text-left bg-gray-100 rounded-full px-4 py-2 text-gray-500 text-sm">
+            What's on your mind? (৳ Sell anything)
+        </button>
+        <i class="fa fa-image text-green-500 text-xl"></i>
+    </div>
+
+    <div id="mainFeed" class="pb-20">
+        <div class="text-center p-10 text-gray-400">Loading your feed...</div>
+    </div>
+
+    <div id="postModal" class="fixed inset-0 bg-white z-[1000] hidden flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i onclick="closePostModal()" class="fa fa-arrow-left text-xl"></i>
+                <h2 class="font-bold">Create Marketplace Post</h2>
+            </div>
+            <button id="publishBtn" onclick="watchAdsAndPost()" class="bg-blue-600 text-white px-4 py-1 rounded-md font-bold">Post</button>
+        </div>
+        <div class="p-4 flex-1 overflow-y-auto">
+            <input id="postTitle" type="text" placeholder="Product Name" class="w-full text-lg border-b p-2 outline-none mb-4">
+            <input id="postPrice" type="number" placeholder="Price (৳)" class="w-full text-lg border-b p-2 outline-none mb-4">
+            <textarea id="postText" class="w-full text-lg outline-none min-h-[120px]" placeholder="Describe your product or share thoughts..."></textarea>
+            
+            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-4 text-center">
+                <p id="adCounter" class="text-sm font-bold text-yellow-700 italic">You must watch 3 ads to publish (0/3)</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0n-x2hAMYWre-utUU_dAM2alfZfk49OA",
+            authDomain: "telecom-959eb.firebaseapp.com",
+            projectId: "telecom-959eb",
+            storageBucket: "telecom-959eb.appspot.com",
+            messagingSenderId: "3770053235",
+            appId: "1:3770053235:android:738091e767f1fb3c5e7006"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Telegram Logic
+        const tg = window.Telegram.WebApp;
+        const user = tg.initDataUnsafe?.user || { id: 6045231271, first_name: "Gopal", photo_url: "https://i.pravatar.cc/100" };
+        const ADMIN_ID = 6045231271;
+        document.getElementById('user-avatar-main').src = user.photo_url;
+
+        // Ad Logic
+        let adsViewed = 0;
+        window.watchAdsAndPost = () => {
+            if(adsViewed < 3) {
+                // Triggering Giga Pub Script
+                if(typeof triggerAd === 'function') triggerAd();
+                adsViewed++;
+                document.getElementById('adCounter').innerText = `Ads Viewed: ${adsViewed}/3`;
+                if(adsViewed === 3) document.getElementById('publishBtn').innerText = "Submit Post";
+            } else {
+                publishNow();
+            }
+        };
+
+        async function publishNow() {
+            const title = document.getElementById('postTitle').value;
+            const price = document.getElementById('postPrice').value;
+            const text = document.getElementById('postText').value;
+            
+            await addDoc(collection(db, "posts"), {
+                uid: user.id,
+                name: user.first_name,
+                pic: user.photo_url,
+                title: title,
+                price: price,
+                desc: text,
+                time: serverTimestamp()
+            });
+            location.reload();
+        }
+
+        // Load Posts
+        onSnapshot(query(collection(db, "posts"), orderBy("time", "desc")), (snap) => {
+            const feed = document.getElementById('mainFeed');
+            feed.innerHTML = "";
+            snap.forEach(d => {
+                const p = d.data();
+                feed.innerHTML += `
+                    <div class="bg-white mt-2 p-3 shadow-sm">
+                        <div class="flex gap-2 items-center mb-2">
+                            <img src="${p.pic}" class="w-10 h-10 rounded-full border">
+                            <div>
+                                <p class="font-bold text-sm">${p.name} ${p.uid == ADMIN_ID ? '<i class="fa fa-check-circle text-blue-500"></i>' : ''}</p>
+                                <p class="text-[10px] text-gray-500">Marketplace · ${p.time ? 'Just now' : 'Uploading...'}</p>
+                            </div>
+                        </div>
+                        <div class="text-blue-600 font-bold text-lg">${p.title || ''}</div>
+                        <div class="text-gray-900 font-black text-xl mb-1">${p.price ? '৳ '+p.price : ''}</div>
+                        <div class="text-sm text-gray-700 mb-2">${p.desc}</div>
+                        <div class="flex border-t pt-2 mt-2 justify-around text-gray-500 text-sm font-bold">
+                            <span class="flex-1 text-center py-1"><i class="fa-regular fa-thumbs-up"></i> Like</span>
+                            <a href="https://t.me/JUST_GOPAL" class="flex-1 text-center py-1 text-blue-600"><i class="fa-regular fa-comment"></i> Chat Admin</a>
+                            <span class="flex-1 text-center py-1"><i class="fa-solid fa-share"></i> Share</span>
+                        </div>
+                    </div>`;
+            });
+        });
+        
+        // Story Upload
+        window.addStory = async () => {
+            const sText = prompt("Write your story:");
+            if(sText) {
+                await addDoc(collection(db, "stories"), {
+                    uid: user.id,
+                    name: user.first_name,
+                    pic: user.photo_url,
+                    text: sText,
+                    time: Date.now()
+                });
+            }
+        };
+
+        onSnapshot(collection(db, "stories"), (snap) => {
+            const sList = document.getElementById('storyList');
+            sList.innerHTML = "";
+            snap.forEach(d => {
+                const s = d.data();
+                if(Date.now() - s.time < 86400000) {
+                    sList.innerHTML += `
+                        <div onclick="alert('Viewing: ${s.text}')" class="flex-shrink-0 flex flex-col items-center">
+                            <img src="${s.pic}" class="w-16 h-16 rounded-full story-ring object-cover">
+                            <span class="text-[10px] mt-1 font-medium">${s.name} ${s.uid == ADMIN_ID ? '<i class="fa fa-check-circle text-blue-500"></i>' : ''}</span>
+                        </div>`;
+                }
+            });
+        });
+
+    </script>
+
+    <script>
+        function openPostModal() { document.getElementById('postModal').style.display = 'flex'; }
+        function closePostModal() { document.getElementById('postModal').style.display = 'none'; }
+    </script>
+</body>
+</html>
